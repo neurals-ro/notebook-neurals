@@ -53,9 +53,12 @@ define([
       console.log('----firstCell', firstCell);
       if(data.weights)
         injection += 'weights = ' + JSON.stringify(data.weights) + '\n';
+      if(data.kmodel)
+        injection += 'kurl = ' + JSON.stringify(data.kmodel) + '\n';
 
       let jqxhr2 = $.get(data.notebook, function( ndata ) {
-        ndata = JSON.parse(ndata);
+        if(typeof ndata === 'string')
+          ndata = JSON.parse(ndata);
         //console.log('ndata', ndata)
         cells = ndata.cells;
         cells.forEach(function(cell) {
@@ -70,34 +73,6 @@ define([
         firstCell.set_text(injection);
       });
     });
-
-    /*getNotebook(url, function(ndata) {
-      cells = ndata.cells;
-      cells.forEach(function(cell) {
-        let jcell = Jupyter.notebook.insert_cell_at_bottom(cell.cell_type);
-        jcell.set_text(cell.source.join('\n'));
-      });
-    });*/
     events.on('kernel_ready.Kernel', restartKernel);
   });
-
-  /*CodeMirror.defineInitHook(function(cm) {
-    let doc = cm.getDoc();
-
-    let inject = function(codem, ev) {
-      cm.off('change', inject);
-      events.on('kernel_ready.Kernel', restartKernel);
-      if(firstCell > 0)
-        return;
-      console.log('cellsFirstNo', cellsFirstNo);
-      firstCell ++;
-      let val = codem.getValue();
-      if(val.indexOf(injVar) == 0) {
-        val = val.substring(val.indexOf('\n')+1);
-      }
-      codem.setValue(injection + '\n' + val);
-    }
-
-    cm.on('change', inject);
-  });*/
 });
