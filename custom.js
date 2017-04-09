@@ -28,11 +28,14 @@ define([
   'notebook/js/cell',
   'codemirror/lib/codemirror'
 ], function(Jupyter, events, cell, CodeMirror) {
+  console.log('------- custom')
   let //firstCell = 0,
     query = getQuery(),
     recipe = query._id,
     url = server + apiUrl + recipe,
     injection = injVar + ' = ' + JSON.stringify(query) + '\n',
+    ncells = Jupyter.notebook.ncells(),
+    indexes = [],
     cells, cellsFirstNo;
 
   let restartKernel = function (k, ev) {
@@ -40,39 +43,39 @@ define([
     Jupyter.notebook.execute_all_cells();
   };
 
-  events.on('notebook_loaded.Notebook', function(evt, data) {
-    let ncells = Jupyter.notebook.ncells(),
-      indexes = [];
-    for(let i=0; i < ncells; i++)
-      indexes.push(i);
-    Jupyter.notebook.delete_cells(indexes);
-    let firstCell = Jupyter.notebook.insert_cell_at_index('code', 0);
-    console.log('firstCell', firstCell);
-    let jqxhr = $.get(url, function( data ) {
-      console.log('----data', data)
-      console.log('----firstCell', firstCell);
-      if(data.weights)
-        injection += 'weights = ' + JSON.stringify(data.weights) + '\n';
-      if(data.kmodel)
-        injection += 'kurl = ' + JSON.stringify(data.kmodel) + '\n';
+  // Delete all cells
+  for(let i=0; i < ncells; i++)
+    indexes.push(i);
+  Jupyter.notebook.delete_cells(indexes);
 
-      let jqxhr2 = $.get(data.notebook, function( ndata ) {
-        if(typeof ndata === 'string')
-          ndata = JSON.parse(ndata);
-        //console.log('ndata', ndata)
-        cells = ndata.cells;
-        cells.forEach(function(cell) {
-          let jcell = Jupyter.notebook.insert_cell_at_bottom(cell.cell_type);
-          jcell.set_text(cell.source.join('\n'));
-        });
-      });
-      console.log('-----firstCell', firstCell);
-      let jqxhr3 = $.get(data.kmodel, function( kdata ) {
-        //console.log('kdata', kdata)
-        injection += "kmodel = '" + kdata + "'" + "\n";
-        firstCell.set_text(injection);
+  let firstCell = Jupyter.notebook.insert_cell_at_index('code', 0);
+
+  let jqxhr = $.get(url, function( data ) {
+    if(data.weights)
+      injection += 'weights = ' + JSON.stringify(data.weights) + '\n';
+    if(data.kmodel)
+      injection += 'kurl = ' + JSON.stringify(data.kmodel) + '\n';
+
+    let jqxhr2 = $.get(data.notebook, function( ndata ) {
+      if(typeof ndata === 'string')
+        ndata = JSON.parse(ndata);
+      //console.log('ndata', ndata)
+      cells = ndata.cells;
+      cells.forEach(function(cell) {
+        let jcell = Jupyter.notebook.insert_cell_at_bottom(cell.cell_type);
+        jcell.set_text(cell.source.join('\n'));
       });
     });
+
+    let jqxhr3 = $.get(data.kmodel, function( kdata ) {
+      console.log('kdata', kdata, typeof kdata)
+      if(typeof kdata === 'object') {
+        kdata = JSON.stringify(kdata);
+      }
+      injection += "kmodel = '" + kdata + "'" + "\n";
+      firstCell.set_text(injection);
+    });
+
     events.on('kernel_ready.Kernel', restartKernel);
   });
 });
