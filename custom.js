@@ -1,5 +1,4 @@
 let injVar = 'query';
-//let server = 'http://orobo.go.ro:5000';
 let server = 'http://localhost:7777';
 let apiUrl = '/api/file/';
 
@@ -34,7 +33,6 @@ define([
     recipe = query._id,
     url = server + apiUrl + recipe,
     injection = injVar + ' = ' + JSON.stringify(query) + '\n',
-    ncells = Jupyter.notebook.ncells(),
     indexes = [],
     cells, cellsFirstNo;
 
@@ -42,40 +40,50 @@ define([
     events.off('kernel_ready.Kernel', restartKernel);
     Jupyter.notebook.execute_all_cells();
   };
+  console.log('before notebook_loading.Notebook');
+  //events.on('notebook_loading.Notebook', function () {
+  //window.setTimeout(function() {
+    console.log('notebook_loading.Notebook');
 
-  // Delete all cells
-  for(let i=0; i < ncells; i++)
-    indexes.push(i);
-  Jupyter.notebook.delete_cells(indexes);
+    // Delete all cells
+    let ncells = Jupyter.notebook.ncells();
+    for(let i=0; i < ncells; i++)
+      indexes.push(i);
+    console.log('DELETE CELLS', indexes);
+    Jupyter.notebook.delete_cells(indexes);
 
-  let firstCell = Jupyter.notebook.insert_cell_at_index('code', 0);
+    let firstCell = Jupyter.notebook.insert_cell_at_index('code', 0);
 
-  let jqxhr = $.get(url, function( data ) {
-    if(data.weights)
-      injection += 'weights = ' + JSON.stringify(data.weights) + '\n';
-    if(data.kmodel)
-      injection += 'kurl = ' + JSON.stringify(data.kmodel) + '\n';
 
-    let jqxhr2 = $.get(data.notebook, function( ndata ) {
-      if(typeof ndata === 'string')
-        ndata = JSON.parse(ndata);
-      //console.log('ndata', ndata)
-      cells = ndata.cells;
-      cells.forEach(function(cell) {
-        let jcell = Jupyter.notebook.insert_cell_at_bottom(cell.cell_type);
-        jcell.set_text(cell.source.join('\n'));
+    let jqxhr = $.get(url, function( data ) {
+      if(data)
+        injection += 'recipe = ' + JSON.stringify(data) + '\n';
+      if(data.kmodel)
+        injection += 'kurl = ' + JSON.stringify(data.kmodel) + '\n';
+      injection += 'server = "' + server + '"\n';
+
+      let jqxhr2 = $.get(data.notebook, function( ndata ) {
+        if(typeof ndata === 'string')
+          ndata = JSON.parse(ndata);
+        //console.log('ndata', ndata)
+        cells = ndata.cells;
+        cells.forEach(function(cell) {
+          let jcell = Jupyter.notebook.insert_cell_at_bottom(cell.cell_type);
+          jcell.set_text(cell.source.join('\n'));
+        });
       });
-    });
 
-    let jqxhr3 = $.get(data.kmodel, function( kdata ) {
-      console.log('kdata', kdata, typeof kdata)
-      if(typeof kdata === 'object') {
-        kdata = JSON.stringify(kdata);
-      }
-      injection += "kmodel = '" + kdata + "'" + "\n";
-      firstCell.set_text(injection);
-    });
+      let jqxhr3 = $.get(data.kmodel, function( kdata ) {
+        console.log('kdata', kdata, typeof kdata)
+        if(typeof kdata === 'object') {
+          kdata = JSON.stringify(kdata);
+        }
+        injection += "kmodel = '" + kdata + "'" + "\n";
+        firstCell.set_text(injection);
+      });
 
-    events.on('kernel_ready.Kernel', restartKernel);
-  });
+      //events.on('kernel_ready.Kernel', restartKernel);
+    });
+  //});
+  //}, 500);
 });
